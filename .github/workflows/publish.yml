@@ -46,6 +46,7 @@ jobs:
           archive="$RUNNER_TEMP/watervein-benchmark-$TAG.tar.gz"
           url="https://github.com/waterveinjs/watervein/releases/download/$TAG/watervein-benchmark-$TAG.tar.gz"
           curl --fail --location --retry 3 --retry-all-errors "$url" --output "$archive"
+          rm -rf "versions/$TAG"
           mkdir -p "versions/$TAG"
           tar -xzf "$archive" -C "versions/$TAG"
           test -s "versions/$TAG/index.html"
