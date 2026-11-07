@@ -61,15 +61,30 @@ jobs:
 
           const file = "history.json";
           const history = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+          const previous = history.find((entry) => entry.tag === process.env.TAG);
           const next = history.filter((entry) => entry.tag !== process.env.TAG);
           next.push({
             tag: process.env.TAG,
-            path: `versions/${process.env.TAG}/index.html`,
-            overview: `versions/${process.env.TAG}/overview.html`,
-            releaseUrl: `https://github.com/waterveinjs/watervein/releases/tag/${process.env.TAG}`,
-            publishedAt: new Date().toISOString(),
+            path: \`versions/\${process.env.TAG}/index.html\`,
+            overview: \`versions/\${process.env.TAG}/overview.html\`,
+            releaseUrl: \`https://github.com/waterveinjs/watervein/releases/tag/\${process.env.TAG}\`,
+            publishedAt: previous?.publishedAt ?? new Date().toISOString(),
           });
-          next.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+          const version = (tag) => {
+            const [core, prerelease] = tag.slice(1).split("-", 2);
+            return { core: core.split(".").map(Number), prerelease };
+          };
+          next.sort((a, b) => {
+            const left = version(a.tag);
+            const right = version(b.tag);
+            for (let index = 0; index < 3; index += 1) {
+              if (left.core[index] !== right.core[index]) return right.core[index] - left.core[index];
+            }
+            if (left.prerelease === right.prerelease) return 0;
+            if (left.prerelease === undefined) return -1;
+            if (right.prerelease === undefined) return 1;
+            return right.prerelease.localeCompare(left.prerelease, undefined, { numeric: true });
+          });
           writeFileSync(file, JSON.stringify(next, null, 2) + "\n");
           NODE
 
