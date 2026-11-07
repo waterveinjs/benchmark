@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Locally measured Watervein JavaScript framework benchmark reports for each release.">
+  <title>Watervein Benchmark Reports</title>
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { max-width: 880px; margin: 0 auto; padding: 48px 24px; line-height: 1.6; }
+    h1 { letter-spacing: -0.04em; line-height: 1.15; }
+    .muted { color: #777; }
+    .latest { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 12px; padding: 20px; margin: 28px 0; }
+    .reports { padding: 0; list-style: none; }
+    .reports li { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+    a { color: inherit; text-underline-offset: 3px; }
+    .links { display: flex; flex-wrap: wrap; gap: 14px; }
+    footer { margin-top: 48px; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="muted">WATERVEIN · PERFORMANCE</p>
+    <h1>Benchmark reports</h1>
+    <p>Release-by-release benchmark results measured on the release maintainer's local machine. GitHub Actions publishes the generated reports; it does not run the benchmarks.</p>
+  </header>
+
+  <section class="latest" aria-labelledby="latest-heading">
+    <h2 id="latest-heading">Latest release</h2>
+    <p id="latest-report" class="muted">Loading report history…</p>
+  </section>
+
+  <section aria-labelledby="history-heading">
+    <h2 id="history-heading">All releases</h2>
+    <ul id="report-list" class="reports"></ul>
+    <p id="empty-state" class="muted" hidden>No benchmark reports have been published yet.</p>
+  </section>
+
+  <footer class="muted">
+    <div class="links">
+      <a href="https://github.com/waterveinjs/watervein">Watervein source</a>
+      <a href="https://github.com/waterveinjs/js-framework-benchmark">Benchmark runner</a>
+      <a href="https://github.com/waterveinjs/benchmark">This site's source</a>
+    </div>
+  </footer>
+
+  <script type="module">
+    const latest = document.querySelector("#latest-report");
+    const list = document.querySelector("#report-list");
+    const empty = document.querySelector("#empty-state");
+
+    function reportLink(entry, label) {
+      const link = document.createElement("a");
+      link.href = entry.path;
+      link.textContent = label;
+      return link;
+    }
+
+    try {
+      const response = await fetch("./history.json", { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load report history.");
+      const reports = await response.json();
+
+      if (reports.length === 0) {
+        latest.textContent = "No release report is available yet.";
+        empty.hidden = false;
+      } else {
+        const newest = reports[0];
+        latest.replaceChildren(reportLink(newest, newest.tag + " — Open interactive report"));
+        const release = document.createElement("a");
+        release.href = newest.releaseUrl;
+        release.textContent = "GitHub Release";
+        latest.append(" · ", release);
+      }
+
+      for (const entry of reports) {
+        const item = document.createElement("li");
+        const title = reportLink(entry, entry.tag);
+        const links = document.createElement("span");
+        links.className = "links";
+        links.append(title);
+        if (entry.overview) links.append(reportLink({ path: entry.overview }, "Overview"));
+        const date = document.createElement("time");
+        date.className = "muted";
+        date.dateTime = entry.publishedAt;
+        date.textContent = new Date(entry.publishedAt).toLocaleDateString(undefined, {
+          year: "numeric", month: "short", day: "numeric"
+        });
+        item.append(links, date);
+        list.append(item);
+      }
+    } catch (error) {
+      latest.textContent = error.message;
+    }
+  </script>
+</body>
+</html>
