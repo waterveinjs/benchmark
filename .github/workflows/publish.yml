@@ -1,0 +1,105 @@
+name: Publish benchmark report
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Watervein release tag (for example, v0.1.54)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out the report site
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $TAG" >&2
+            exit 1
+          fi
+
+      - name: Download locally generated report archive
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          archive="$RUNNER_TEMP/watervein-benchmark-$TAG.tar.gz"
+          url="https://github.com/waterveinjs/watervein/releases/download/$TAG/watervein-benchmark-$TAG.tar.gz"
+          curl --fail --location --retry 3 --retry-all-errors "$url" --output "$archive"
+          mkdir -p "versions/$TAG"
+          tar -xzf "$archive" -C "versions/$TAG"
+          test -s "versions/$TAG/index.html"
+          test -s "versions/$TAG/overview.html"
+
+      - name: Update report history
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync, existsSync } from "node:fs";
+
+          const file = "history.json";
+          const history = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+          const next = history.filter((entry) => entry.tag !== process.env.TAG);
+          next.push({
+            tag: process.env.TAG,
+            path: `versions/${process.env.TAG}/index.html`,
+            overview: `versions/${process.env.TAG}/overview.html`,
+            releaseUrl: `https://github.com/waterveinjs/watervein/releases/tag/${process.env.TAG}`,
+            publishedAt: new Date().toISOString(),
+          });
+          next.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+          writeFileSync(file, JSON.stringify(next, null, 2) + "\n");
+          NODE
+
+      - name: Commit the versioned report
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add history.json "versions/$TAG"
+          if ! git diff --cached --quiet; then
+            git commit -m "publish: $TAG benchmark report"
+            git push origin HEAD:main
+          fi
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p _site
+          cp index.html history.json _site/
+          cp -R versions _site/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
