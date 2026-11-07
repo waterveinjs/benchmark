@@ -65,9 +65,9 @@ jobs:
           const next = history.filter((entry) => entry.tag !== process.env.TAG);
           next.push({
             tag: process.env.TAG,
-            path: \`versions/\${process.env.TAG}/index.html\`,
-            overview: \`versions/\${process.env.TAG}/overview.html\`,
-            releaseUrl: \`https://github.com/waterveinjs/watervein/releases/tag/\${process.env.TAG}\`,
+            path: "versions/" + process.env.TAG + "/index.html",
+            overview: "versions/" + process.env.TAG + "/overview.html",
+            releaseUrl: "https://github.com/waterveinjs/watervein/releases/tag/" + process.env.TAG,
             publishedAt: previous?.publishedAt ?? new Date().toISOString(),
           });
           const version = (tag) => {
