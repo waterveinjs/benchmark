@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "tag": "v0.1.55",
+    "path": "versions/v0.1.55/index.html",
+    "overview": "versions/v0.1.55/overview.html",
+    "releaseUrl": "https://github.com/waterveinjs/watervein/releases/tag/v0.1.55",
+    "publishedAt": "2026-11-08T02:50:37.744Z"
+  }
+]
